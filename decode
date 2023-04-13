@@ -1,0 +1,1 @@
+./target/debug/ribx decode $(sed "$1!d;q" ./input.log) > ./out.log
