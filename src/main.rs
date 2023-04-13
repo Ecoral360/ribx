@@ -75,7 +75,7 @@ struct Cli {
     command: Commands,
 }
 
-fn decode(ribn: String, meta: bool) {
+fn decode(ribn: String, meta: bool, include_sym_table: bool) {
     let mut decoder = Decoder::new(ribn.clone());
     let (mut symbol_table, symbol_table_str) = decoder.decode_symbol_table();
     let (pc, op_vec_repr) = decoder.decode(&mut symbol_table);
@@ -96,10 +96,14 @@ fn decode(ribn: String, meta: bool) {
     }
     */
     let (sym_table_str, code_str) = ribn.split_once(';').unwrap();
-    println!("Ribn:\n{}\n", sym_table_str);
-    println!("Symbol Table:");
-    symbol_table_str.iter().for_each(|s| println!("{}", s));
-    println!("\nCode:\n{}\n\n", code_str);
+    println!("Ribn:\n{}", ribn);
+    if include_sym_table {
+        println!("\n{}\n\nSymbol Table Ribn:\n{}\n", "-".repeat(80) , sym_table_str);
+        println!("Symbol Table:");
+        symbol_table_str.iter().for_each(|s| println!("{}", s));
+    }
+    println!("\n{}\n\nCode Ribn:\n{}\n", "-".repeat(80), code_str);
+    println!("Code:");
     OpRibRepr::vec_to_string(&op_vec_repr, &symbol_table, meta)
         .iter()
         .for_each(|s| println!("{}", s))
@@ -116,12 +120,13 @@ fn main() {
             indent_level,
             meta,
             no_meta,
+            sym_table,
             ..
         }) => {
             unsafe {
                 INDENT_LEVEL = *indent_level;
             }
-            decode(ribn.clone(), !no_meta);
+            decode(ribn.clone(), !no_meta, *sym_table);
         }
     }
 }

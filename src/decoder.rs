@@ -589,7 +589,7 @@ pub fn data_rib_to_string(data_rib: Rib) -> String {
             op_rib_to_string(&data_rib.1.as_rib().unwrap())
         ), // pair
         1 => procedure_rib_to_string(&data_rib), // procedure
-        2 => format!("'{}", {
+        2 => format!("{}", {
             let symbol = pair_to_string(data_rib.1.as_rib().unwrap());
             if symbol.is_empty() {
                 " ".to_owned()
