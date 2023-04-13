@@ -5,7 +5,6 @@ fn indent_level() -> usize {
     unsafe { INDENT_LEVEL }
 }
 
-
 #[derive(Debug)]
 pub struct SymbolTable {
     symbols: Rib, // linked list of symbols
@@ -111,7 +110,7 @@ impl Obj {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum OpRibRepr {
+pub enum OpRibRepr {
     Jump {
         /// The chars in the ribn that makes this operation
         ribn_chars: String,
@@ -177,11 +176,7 @@ impl OpRibRepr {
         .clone()
     }
 
-    fn to_string(
-        &self,
-        symbol_table: &SymbolTable,
-        with_ribn_chars: bool,
-    ) -> String {
+    fn to_string(&self, symbol_table: &SymbolTable, with_ribn_chars: bool) -> String {
         let ribn = if with_ribn_chars {
             format!(
                 "\n{}|--> {}",
@@ -250,7 +245,7 @@ impl OpRibRepr {
         format!("{}{}\n", op_str, ribn)
     }
 
-    fn vec_to_string(
+    pub fn vec_to_string(
         ops: &Vec<OpRibRepr>,
         symbol_table: &SymbolTable,
         with_ribn_chars: bool,
@@ -353,7 +348,7 @@ impl Decoder {
         })
     }
 
-    pub fn decode(&mut self, symbol_table: &mut SymbolTable) -> (PC, Vec<String>) {
+    pub fn decode(&mut self, symbol_table: &mut SymbolTable) -> (PC, Vec<OpRibRepr>) {
         let mut op_stack = NIL;
         let mut op_repr_stack = Vec::new();
         let (sym_table_len, code_len) = self.code_len();
@@ -482,14 +477,9 @@ impl Decoder {
         let Obj::Rib(pc) = pc.0 else { unreachable!() };
         let Obj::Rib(pc) = pc.2 else { unreachable!() };
 
-        (
-            *pc,
-            OpRibRepr::vec_to_string(
-                &op_repr_stack.into_iter().rev().collect::<Vec<OpRibRepr>>(),
-                symbol_table,
-                true,
-            ),
-        )
+        op_repr_stack.reverse();
+
+        (*pc, op_repr_stack)
     }
 
     pub fn decode_symbol_table(&mut self) -> (SymbolTable, Vec<String>) {
