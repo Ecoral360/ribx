@@ -109,31 +109,71 @@ impl Obj {
     }
 }
 
+type StackSymbol = String;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RibIndex {
+    SymbolTableIndex(i32, StackSymbol),
+    StackIndex(i32),
+}
+
+impl RibIndex {
+    fn index(&self) -> i32 {
+        match self {
+            RibIndex::SymbolTableIndex(index, ..) => *index,
+            RibIndex::StackIndex(index) => *index,
+        }
+    }
+
+    fn is_symbol_table_index(&self) -> bool {
+        match self {
+            RibIndex::SymbolTableIndex(..) => true,
+            RibIndex::StackIndex(..) => false,
+        }
+    }
+
+    fn is_stack_index(&self) -> bool {
+        match self {
+            RibIndex::SymbolTableIndex(..) => false,
+            RibIndex::StackIndex(..) => true,
+        }
+    }
+
+    fn to_string(&self) -> String {
+        match self {
+            RibIndex::SymbolTableIndex(index, symbol) => {
+                format!("sym_t<{}>{{{}}}", self.index(), symbol)
+            }
+            RibIndex::StackIndex(index) => format!("stack<{}>", index),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OpRibRepr {
     Jump {
         /// The chars in the ribn that makes this operation
         ribn_chars: String,
         /// The index of the symbol representing the function to tail-call
-        slot_idx: i32,
+        index: RibIndex,
     },
     Call {
         /// The chars in the ribn that makes this operation
         ribn_chars: String,
         /// The index of the symbol representing the function to call
-        slot_idx: i32,
+        index: RibIndex,
     },
     Set {
         /// The chars in the ribn that makes this operation
         ribn_chars: String,
         /// The index of the symbol that will be set
-        slot_idx: i32,
+        index: RibIndex,
     },
     Get {
         /// The chars in the ribn that makes this operation
         ribn_chars: String,
         /// The index of the symbol containing the value to push on the stack
-        slot_idx: i32,
+        index: RibIndex,
     },
     Const {
         /// The chars in the ribn that makes this operation
@@ -176,7 +216,7 @@ impl OpRibRepr {
         .clone()
     }
 
-    fn to_string(&self, symbol_table: &SymbolTable, with_ribn_chars: bool) -> String {
+    fn to_string(&self, with_ribn_chars: bool) -> String {
         let ribn = if with_ribn_chars {
             format!(
                 "\n{}|--> {}",
@@ -187,38 +227,14 @@ impl OpRibRepr {
             String::new()
         };
         let op_str = match self {
-            OpRibRepr::Jump {
-                ribn_chars,
-                slot_idx,
-            } => format!(
-                "[jump call] push call( st<{}>{{{}}} ); jump",
-                slot_idx,
-                symbol_table.get(*slot_idx as usize).to_string(),
-            ),
-            OpRibRepr::Call {
-                ribn_chars,
-                slot_idx,
-            } => format!(
-                "[call] push call( st<{}>{{{}}} )",
-                slot_idx,
-                symbol_table.get(*slot_idx as usize).to_string(),
-            ),
-            OpRibRepr::Set {
-                ribn_chars,
-                slot_idx,
-            } => format!(
-                "[set] st<{}>{{{}}} ← pop()",
-                slot_idx,
-                symbol_table.get(*slot_idx as usize).to_string(),
-            ),
-            OpRibRepr::Get {
-                ribn_chars,
-                slot_idx,
-            } => format!(
-                "[get] push st<{}>{{{}}}",
-                slot_idx,
-                symbol_table.get(*slot_idx as usize).to_string(),
-            ),
+            OpRibRepr::Jump { ribn_chars, index } => {
+                format!("[jump call] push call( {} ); jump", index.to_string(),)
+            }
+            OpRibRepr::Call { ribn_chars, index } => {
+                format!("[call] push call( {} )", index.to_string(),)
+            }
+            OpRibRepr::Set { ribn_chars, index } => format!("[set] {} ← pop()", index.to_string(),),
+            OpRibRepr::Get { ribn_chars, index } => format!("[get] push {}", index.to_string(),),
             OpRibRepr::Const { ribn_chars, object } => {
                 format!("[const] push {}", object.to_string())
             }
@@ -247,13 +263,12 @@ impl OpRibRepr {
 
     pub fn vec_to_string(
         ops: &Vec<OpRibRepr>,
-        symbol_table: &SymbolTable,
         with_ribn_chars: bool,
     ) -> Vec<String> {
         let mut vectors = vec![];
         let mut branches_stack: Vec<usize> = vec![];
         for (i, op) in ops.iter().enumerate() {
-            vectors.push(op.to_string(symbol_table, with_ribn_chars));
+            vectors.push(op.to_string(with_ribn_chars));
             match op {
                 OpRibRepr::Jump { .. } => match branches_stack.pop() {
                     Some(line) => {
@@ -406,19 +421,26 @@ impl Decoder {
             );
 
             let arg_type: &str;
+            let op_rib_idx: RibIndex;
             let mut next_value = if op_value == short_op {
                 arg_type = "literal";
                 op_value = self.get_int(0, &mut char_accumulator);
+                op_rib_idx = RibIndex::StackIndex(op_value);
                 Obj::Number(op_value)
             } else if op_value > short_op {
                 arg_type = "index";
                 op_value = self.get_int((op_value - short_op - 1) as i32, &mut char_accumulator);
-                symbol_table.get(op_value as usize).clone()
+                let symbol = symbol_table.get(op_value as usize).clone();
+                op_rib_idx = RibIndex::SymbolTableIndex(op_value, symbol.to_string());
+                symbol
             } else if op_idx < 3 {
                 arg_type = "index";
-                symbol_table.get(op_value as usize).clone()
+                let symbol = symbol_table.get(op_value as usize).clone();
+                op_rib_idx = RibIndex::SymbolTableIndex(op_value, symbol.to_string());
+                symbol
             } else {
                 arg_type = "literal";
+                op_rib_idx = RibIndex::StackIndex(op_value);
                 Obj::Number(op_value as i32)
             };
             char_accumulator
@@ -442,19 +464,19 @@ impl Decoder {
             op_repr_stack.push(match op_idx {
                 0 => OpRibRepr::Jump {
                     ribn_chars: char_accumulator,
-                    slot_idx: op_value,
+                    index: op_rib_idx,
                 },
                 1 => OpRibRepr::Call {
                     ribn_chars: char_accumulator,
-                    slot_idx: op_value,
+                    index: op_rib_idx,
                 },
                 2 => OpRibRepr::Set {
                     ribn_chars: char_accumulator,
-                    slot_idx: op_value,
+                    index: op_rib_idx,
                 },
                 3 => OpRibRepr::Get {
                     ribn_chars: char_accumulator,
-                    slot_idx: op_value,
+                    index: op_rib_idx,
                 },
                 4 => OpRibRepr::Const {
                     ribn_chars: char_accumulator,

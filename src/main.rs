@@ -104,7 +104,7 @@ fn decode(ribn: String, meta: bool, include_sym_table: bool) {
     }
     println!("\n{}\n\nCode Ribn:\n{}\n", "-".repeat(80), code_str);
     println!("Code:");
-    OpRibRepr::vec_to_string(&op_vec_repr, &symbol_table, meta)
+    OpRibRepr::vec_to_string(&op_vec_repr, meta)
         .iter()
         .for_each(|s| println!("{}", s))
 }
