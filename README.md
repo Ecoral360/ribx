@@ -43,6 +43,8 @@ Ribx provides a set of commands to perform different actions on the analyzed RIB
           - op-arg-type:
             Include the type of the argument of the operation (index or literal)
 
+          --no-meta                    Don't include any meta info, only the operations themselves
+
       -h, --help
           Print help (see a summary with '-h')
 
