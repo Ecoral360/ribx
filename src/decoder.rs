@@ -261,35 +261,62 @@ impl OpRibRepr {
         format!("{}{}\n", op_str, ribn)
     }
 
-    pub fn vec_to_string(
-        ops: &Vec<OpRibRepr>,
-        with_ribn_chars: bool,
-    ) -> Vec<String> {
+    fn format_jumps(
+        line: usize,
+        i: usize,
+        branch_type: String,
+        vectors: &mut Vec<String>,
+        branches_stack: &mut Vec<(usize, String)>,
+    ) {
+        if branch_type == "else" {
+            if let Some((other_block_line, other_branch_type)) = branches_stack.pop() {
+                OpRibRepr::format_jumps(
+                    other_block_line,
+                    i,
+                    other_branch_type.clone(),
+                    vectors,
+                    branches_stack,
+                );
+            }
+        }
+        (line..=i).into_iter().for_each(|idx| {
+            vectors[idx] = format!(
+                "{}{}",
+                " ".repeat(indent_level()),
+                vectors[idx].replace(
+                    "\n",
+                    format!("\n{}", " ".repeat(indent_level()).as_str()).as_str()
+                )
+            );
+        });
+
+        if branch_type == "if" {
+            let curr_indent = vectors.last().unwrap().find('[').unwrap() - indent_level();
+            vectors
+                .last_mut()
+                .unwrap()
+                .push_str(format!("\n{}[else]\n", " ".repeat(curr_indent)).as_str());
+            branches_stack.push((i + 1, "else".to_owned()));
+        }
+    }
+
+    pub fn vec_to_string(ops: &Vec<OpRibRepr>, with_ribn_chars: bool) -> Vec<String> {
         let mut vectors = vec![];
-        let mut branches_stack: Vec<usize> = vec![];
+        let mut branches_stack: Vec<(usize, String)> = vec![];
         for (i, op) in ops.iter().enumerate() {
             vectors.push(op.to_string(with_ribn_chars));
             match op {
                 OpRibRepr::Jump { .. } => match branches_stack.pop() {
-                    Some(line) => {
-                        (line..=i).into_iter().for_each(|idx| {
-                            vectors[idx] = format!(
-                                "{}{}",
-                                " ".repeat(indent_level()),
-                                vectors[idx].replace(
-                                    "\n",
-                                    format!("\n{}", " ".repeat(indent_level()).as_str()).as_str()
-                                )
-                            );
-                        });
+                    Some((line, branch_type)) => {
+                        OpRibRepr::format_jumps(line, i, branch_type, &mut vectors, &mut branches_stack);
                     }
                     _ => {}
                 },
                 OpRibRepr::ClosureConst { closure, .. } => {
-                    branches_stack.push(i + 1);
+                    branches_stack.push((i + 1, "closure".to_owned()));
                 }
                 OpRibRepr::If { .. } => {
-                    branches_stack.push(i + 1);
+                    branches_stack.push((i + 1, "if".to_owned()));
                 }
                 _ => {}
             }

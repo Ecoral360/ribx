@@ -98,9 +98,15 @@ fn decode(ribn: String, meta: bool, include_sym_table: bool) {
     let (sym_table_str, code_str) = ribn.split_once(';').unwrap();
     println!("Ribn:\n{}", ribn);
     if include_sym_table {
-        println!("\n{}\n\nSymbol Table Ribn:\n{}\n", "-".repeat(80) , sym_table_str);
+        println!(
+            "\n{}\n\nSymbol Table Ribn:\n{}\n",
+            "-".repeat(80),
+            sym_table_str
+        );
         println!("Symbol Table:");
-        symbol_table_str.iter().for_each(|s| println!("{}", if s.is_empty() { "▢" } else { s }));
+        symbol_table_str
+            .iter()
+            .for_each(|s| println!("{}", if s.is_empty() { "▢" } else { s }));
     }
     println!("\n{}\n\nCode Ribn:\n{}\n", "-".repeat(80), code_str);
     println!("Code:");
