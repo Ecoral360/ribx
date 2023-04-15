@@ -525,6 +525,8 @@ impl Decoder {
 
         let Obj::Rib(pc) = pc.0 else { unreachable!() };
         let Obj::Rib(pc) = pc.2 else { unreachable!() };
+        
+        println!("Number of instructions: {}", op_repr_stack.len());
 
         op_repr_stack.reverse();
 

@@ -1,1 +1,1 @@
-./target/debug/ribx decode ${@:2} $(sed "$1!d;q" ./input.log) > ./out.log
+ribx decode ${@:2} $(sed "$1!d;q" ./input.log) > ./out.log
