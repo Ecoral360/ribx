@@ -6,6 +6,9 @@ use decoder::{Decoder, DEFAULT_INDENT_LEVEL, INDENT_LEVEL};
 use crate::decoder::OpRibRepr;
 
 mod decoder;
+mod decoder_opt;
+mod reporter;
+mod data;
 mod runner;
 
 fn sym_table() {}

@@ -1,5 +1,3 @@
-use crate::data::NIL;
-
 pub const DEFAULT_INDENT_LEVEL: usize = 2;
 pub static mut INDENT_LEVEL: usize = DEFAULT_INDENT_LEVEL;
 
@@ -89,6 +87,8 @@ impl Rib {
         len
     }
 }
+
+pub const NIL: Rib = Rib(Obj::Number(0), Obj::Number(0), Obj::Number(5));
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Obj {
