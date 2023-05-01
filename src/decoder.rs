@@ -1,7 +1,8 @@
-use crate::data::NIL;
 
 pub const DEFAULT_INDENT_LEVEL: usize = 2;
 pub static mut INDENT_LEVEL: usize = DEFAULT_INDENT_LEVEL;
+
+pub const NIL: Rib = Rib(Obj::Number(0), Obj::Number(0), Obj::Number(5));
 
 fn indent_level() -> usize {
     unsafe { INDENT_LEVEL }
@@ -439,6 +440,8 @@ impl Decoder {
             if op_idx as i32 == OP_JUMP {
                 op_stack = Rib(Obj::Number(0), Obj::rib(op_stack), Obj::Number(0));
             }
+            
+            // IF: (TRUE, FALSE, 5)  =>  IF: (TRUE, FALSE, CONT)
 
             let mut op_value = op_code - OP_RANGES[op_idx];
             let short_op = SHORT_OP[op_idx];

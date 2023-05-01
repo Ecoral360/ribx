@@ -1,5 +1,7 @@
 #![allow(dead_code, unused_variables)]
 
+use std::io::stdin;
+
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use decoder::{Decoder, DEFAULT_INDENT_LEVEL, INDENT_LEVEL};
 
@@ -57,7 +59,7 @@ struct DecodeArgs {
     /// Do not include any meta information in the decoded output, only keep the operations themselves
     no_meta: bool,
 
-    ribn: String,
+    ribn: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -122,7 +124,12 @@ fn main() {
             unsafe {
                 INDENT_LEVEL = *indent_level;
             }
-            decode(ribn.clone(), !no_meta, *sym_table);
+
+            decode(ribn.clone().unwrap_or_else(|| {
+                let mut ribn = String::new();
+                stdin().read_line(&mut ribn).unwrap();
+                ribn
+            }).clone(), !no_meta, *sym_table);
         }
 
         Commands::Run(_) => todo!(),
